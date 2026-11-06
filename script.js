@@ -1,10 +1,10 @@
 let carrito = [];
-let todosLosProductos = []; // Lista en memoria para que funcione el buscador
+let todosLosProductos = []; // Guardamos la lista en memoria para el filtro del buscador
 
 // Tu enlace real de Google Sheets
 const URL_EXCEL_CSV = "https://google.com";
 
-// Función para procesar correctamente las filas del CSV manejando comillas
+// Función para procesar correctamente las filas del CSV manejando comillas y comas
 function parsearFilaCSV(linea) {
     let resultado = [];
     let dentroDeComillas = false;
@@ -35,16 +35,17 @@ fetch(URL_EXCEL_CSV)
       if (!fila.trim()) return;
       
       const columnas = parsearFilaCSV(fila);
-      if (columnas.length < 5) return;
+      if (columnas.length < 3) return;
 
-      const nombre = columnas.at(2); 
-      const precioTexto = columnas.at(3) || "$0";
-      const descripcion = columnas.at(4) || "";
-      const imagen = columnas.at(5) || "https://unsplash.com";
+      // Buscador inteligente por contenido para que no dependa del orden de las columnas del Scraper
+      let nombre = columnas.find(c => c.length > 3 && !c.includes('$') && !c.includes('http')) || "Producto sin nombre";
+      let precioTexto = columnas.find(c => c.includes('$')) || "$ 0";
+      let descripcion = columnas.find(c => c.length > 15 && !c.includes('http') && c !== nombre) || "Sin descripción disponible.";
+      let imagen = columnas.find(c => c.includes('http')) || "https://unsplash.com";
 
-      const precioNum = parseFloat(precioTexto.replace(/\$/g, '').replace(/\./g, '').replace(/,/g, '').trim()) || 0;
+      let precioNum = parseFloat(precioTexto.replace(/\$/g, '').replace(/\./g, '').replace(/,/g, '').trim()) || 0;
 
-      // Guardamos cada producto en la lista general de memoria
+      // Guardamos la información limpia en la memoria de la página
       todosLosProductos.push({
         id: indice,
         nombre: nombre,
@@ -55,16 +56,16 @@ fetch(URL_EXCEL_CSV)
       });
     });
 
-    // Dibujamos el catálogo completo al iniciar
+    // Dibujamos todo el catálogo por primera vez
     mostrarProductosEnPantalla(todosLosProductos);
   })
   .catch(error => console.error("Error cargando los productos desde Sheets:", error));
 
-// Función exclusiva para dibujar las tarjetas en la grilla visual
+// Función para armar y meter las tarjetas en la grilla visual
 function mostrarProductosEnPantalla(lista) {
     const contenedor = document.getElementById('contenedor-productos');
     if (!contenedor) return;
-    contenedor.innerHTML = ""; // Vaciamos la grilla
+    contenedor.innerHTML = ""; // Limpiamos la pantalla antes de dibujar
     
     if (lista.length === 0) {
         contenedor.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #aaa; margin: 40px 0;">No se encontraron productos que coincidan.</p>`;
@@ -85,22 +86,24 @@ function mostrarProductosEnPantalla(lista) {
     });
 }
 
-// 🔍 Conexión del buscador: Filtra en tiempo real al escribir
+// 🔍 EL FILTRO DEL BUSCADOR: Reacciona de forma inmediata cuando escribís
 const inputBuscador = document.getElementById('buscador-productos');
 if (inputBuscador) {
     inputBuscador.addEventListener('input', (e) => {
         const textoBuscado = e.target.value.toLowerCase().trim();
         
+        // Filtramos de la lista general lo que coincida con el nombre o la descripción
         const productosFiltrados = todosLosProductos.filter(producto => {
             return producto.nombre.toLowerCase().includes(textoBuscado) || 
                    producto.descripcion.toLowerCase().includes(textoBuscado);
         });
         
+        // Volvemos a dibujar las tarjetas filtradas
         mostrarProductosEnPantalla(productosFiltrados);
     });
 }
 
-// 2. Funciones del carrito de compras
+// 2. Funciones básicas del carrito de compras
 function agregarAlCarrito(id, nombre, precio) {
   const itemExistente = carrito.find(item => item.id === id);
   if (itemExistente) {
@@ -145,7 +148,7 @@ function actualizarVistaCarrito() {
   btnFinalizar.style.display = 'block';
 }
 
-// 3. Envío consolidado a tu WhatsApp real
+// 3. Envío consolidado a tu WhatsApp real con tu estructura de link exacta
 const btnFinalizar = document.getElementById('btn-finalizar');
 if (btnFinalizar) {
     btnFinalizar.addEventListener('click', () => {
@@ -167,7 +170,7 @@ if (btnFinalizar) {
     });
 }
 
-// 4. Funciones para controlar el cartel de la foto ampliada
+// 4. Funciones para controlar el zoom de la foto (Modal)
 function abrirImagenGrande(url) {
     const modal = document.getElementById('mi-modal-imagen');
     const imgAmpliada = document.getElementById('imagen-ampliada');
@@ -185,5 +188,4 @@ if (modalImagen) {
         this.style.display = 'none';
     });
 }
-
 

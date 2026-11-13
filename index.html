@@ -333,7 +333,7 @@
                     <h3>${producto.nombre}</h3>
                     <p>${producto.descripcion}</p>
                     <div class="precio">${producto.precioTexto}</div>
-                    <button class="btn-agregar" onclick="agregarAlCarrito('${producto.id}', '${producto.nombre.replace(/'/g, "\'")}', ${producto.precioNum})">Agregar al carrito</button>
+                    <button class="btn-agregar" onclick="agregarAlCarrito('${producto.id}', '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precioNum})">Agregar al carrito</button>
                 `;
                 contenedor.appendChild(tarjeta);
             });
@@ -369,7 +369,7 @@
             })
             .catch(error => {
                 console.error("Error cargando los productos:", error);
-                document.getElementById('contenedor-productos').innerHTML = '<p style="text-align: center; color: #ff6b6b; grid-column: 1 / -1;">Error al cargar la planilla. Abrí la página usando Live Server en Visual Studio Code.</p>';
+                document.getElementById('contenedor-productos').innerHTML = '<p style="text-align: center; color: #ff6b6b; grid-column: 1 / -1;">Error al cargar la planilla de productos.</p>';
             });
 
         function agregarAlCarrito(id, nombre, precio) {
@@ -445,8 +445,9 @@
             });
 
             const datosParaEnviar = {
-                _subject: `Nuevo Pedido Mayorista de ${nombreCliente}`,
-                _template: "table",
+                access_key: "2bc2f43a-eab7-4913-8d65-3ab4e60d0866",
+                subject: `Nuevo Pedido Mayorista de ${nombreCliente}`,
+                from_name: "Mi Tienda Mayorista",
                 Cliente: nombreCliente,
                 Telefono: telefonoCliente,
                 Correo_del_Cliente: emailCliente,
@@ -456,9 +457,7 @@
                 Total_Estimado: `$${totalGeneral.toLocaleString('es-AR')}`
             };
 
-            const urlEnvio = "https://formsubmit.co/ajax/jonathan.pirillo@outlook.com";
-
-            fetch(urlEnvio, {
+            fetch("https://api.web3forms.com/submit", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
@@ -468,16 +467,20 @@
             })
             .then(response => response.json())
             .then(data => {
-                carrito = [];
-                actualizarVistaCarrito();
-                document.getElementById('form-pedido').reset();
-                document.getElementById('mensaje-confirmacion').style.display = 'block';
+                if (data.success) {
+                    carrito = [];
+                    actualizarVistaCarrito();
+                    document.getElementById('form-pedido').reset();
+                    document.getElementById('mensaje-confirmacion').style.display = 'block';
+                } else {
+                    alert("Error al enviar: " + data.message);
+                }
                 btnSubmit.disabled = false;
                 btnSubmit.innerText = "Enviar Pedido Ahora";
             })
             .catch(error => {
                 console.error("Error al enviar:", error);
-                alert("Hubo un problema al enviar el pedido. Por favor, intentá nuevamente.");
+                alert("Hubo un problema de conexión. Intentá nuevamente.");
                 btnSubmit.disabled = false;
                 btnSubmit.innerText = "Enviar Pedido Ahora";
             });

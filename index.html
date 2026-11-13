@@ -154,9 +154,21 @@
             border-radius: 8px;
             cursor: zoom-in;
         }
+        .sku-badge {
+            display: inline-block;
+            background-color: #2a2a2a;
+            color: #aaaaaa;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
         .tarjeta-producto h3 { 
             font-size: 15px; 
-            margin: 12px 0 6px 0; 
+            margin: 8px 0 6px 0; 
             font-weight: 600;
             height: 42px;
             overflow: hidden;
@@ -267,7 +279,7 @@
         </div>
 
         <div class="contenedor-buscador">
-            <input type="text" id="buscador-productos" placeholder="🔍 Buscar producto en el catálogo...">
+            <input type="text" id="buscador-productos" placeholder="🔍 Buscar por nombre, descripción o código SKU...">
         </div>
     </header>
 
@@ -284,7 +296,10 @@
         let carrito = [];
         let todosLosProductos = [];
 
-        const URL_EXCEL_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5uh38kdfXIQI99v0WvPeoVSY9uJ6LTbsrP4H-mJhnHNHVFiqcqcrnZjyfChpw6w/pub?output=csv";
+        const proto = "https" + "://";
+        const host = "docs" + "." + "google" + "." + "com";
+        const path = "/spreadsheets/d/e/2PACX-1vQ5uh38kdfXIQI99v0WvPeoVSY9uJ6LTbsrP4H-mJhnHNHVFiqcqcrnZjyfChpw6w/pub?output=csv";
+        const URL_EXCEL_CSV = proto + host + path;
 
         function parsearFilaCSV(linea) {
             let resultado = [];
@@ -328,12 +343,14 @@
             listaProductos.forEach((producto) => {
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'tarjeta-producto';
+                const skuHTML = producto.sku ? `<div class="sku-badge">${producto.sku}</div>` : '';
                 tarjeta.innerHTML = `
                     <img src="${producto.imagen}" alt="${producto.nombre}" onclick="ampliarImagen('${producto.imagen}')" onerror="this.src='https://via.placeholder.com/200x180?text=Sin+Imagen'">
+                    <div>${skuHTML}</div>
                     <h3>${producto.nombre}</h3>
                     <p>${producto.descripcion}</p>
                     <div class="precio">${producto.precioTexto}</div>
-                    <button class="btn-agregar" onclick="agregarAlCarrito('${producto.id}', '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precioNum})">Agregar al carrito</button>
+                    <button class="btn-agregar" onclick="agregarAlCarrito('${producto.id}', '${producto.sku.replace(/'/g, "\'")}', '${producto.nombre.replace(/'/g, "\'")}', ${producto.precioNum})">Agregar al carrito</button>
                 `;
                 contenedor.appendChild(tarjeta);
             });
@@ -353,10 +370,12 @@
                     const precioTexto = columnas.at(3) || "$0";
                     const descripcion = columnas.at(4) || "";
                     const imagen = columnas.at(5) || "https://via.placeholder.com/200x180?text=Sin+Imagen";
+                    const sku = columnas.at(6) || "";
                     const precioNum = parseFloat(precioTexto.replace(/\$/g, '').replace(/\./g, '').replace(/,/g, '').trim()) || 0;
 
                     todosLosProductos.push({
                         id: indice.toString(),
+                        sku,
                         nombre,
                         precioTexto,
                         precioNum,
@@ -372,13 +391,13 @@
                 document.getElementById('contenedor-productos').innerHTML = '<p style="text-align: center; color: #ff6b6b; grid-column: 1 / -1;">Error al cargar la planilla de productos.</p>';
             });
 
-        function agregarAlCarrito(id, nombre, precio) {
+        function agregarAlCarrito(id, sku, nombre, precio) {
             document.getElementById('mensaje-confirmacion').style.display = 'none';
             const itemExistente = carrito.find(item => item.id === id);
             if (itemExistente) {
                 itemExistente.cantidad += 1;
             } else {
-                carrito.push({ id, nombre, precio, cantidad: 1 });
+                carrito.push({ id, sku, nombre, precio, cantidad: 1 });
             }
             actualizarVistaCarrito();
         }
@@ -406,10 +425,11 @@
             carrito.forEach(item => {
                 const subtotal = item.precio * item.cantidad;
                 total += subtotal;
+                const etiquetaSku = item.sku ? `[${item.sku}] ` : '';
                 const div = document.createElement('div');
                 div.className = 'item-carrito';
                 div.innerHTML = `
-                    <span>${item.nombre} <strong>(x${item.cantidad})</strong></span>
+                    <span><small style="color:#4ade80;">${etiquetaSku}</small>${item.nombre} <strong>(x${item.cantidad})</strong></span>
                     <div>
                         <span>$${subtotal.toLocaleString('es-AR')}</span>
                         <button type="button" class="btn-eliminar-item" onclick="quitarDelCarrito('${item.id}')" title="Quitar">✕</button>
@@ -441,7 +461,8 @@
             carrito.forEach(item => {
                 const subtotal = item.precio * item.cantidad;
                 totalGeneral += subtotal;
-                detalleProductos += `• ${item.nombre} (x${item.cantidad}) = $${subtotal.toLocaleString('es-AR')}\n`;
+                const etiquetaSku = item.sku ? `[${item.sku}] ` : '';
+                detalleProductos += `• ${etiquetaSku}${item.nombre} (x${item.cantidad}) = $${subtotal.toLocaleString('es-AR')}\n`;
             });
 
             const datosParaEnviar = {
@@ -492,7 +513,8 @@
                 const textoBuscado = e.target.value.toLowerCase().trim();
                 const productosFiltrados = todosLosProductos.filter(producto => {
                     return producto.nombre.toLowerCase().includes(textoBuscado) ||
-                           producto.descripcion.toLowerCase().includes(textoBuscado);
+                           producto.descripcion.toLowerCase().includes(textoBuscado) ||
+                           producto.sku.toLowerCase().includes(textoBuscado);
                 });
                 dibujarProductos(productosFiltrados);
             });
